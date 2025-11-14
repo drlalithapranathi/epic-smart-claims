@@ -158,70 +158,75 @@
       const b=document.createElement("span"); b.className=`badge ${type}`; b.textContent=text; badges.appendChild(b);
     };
 
-    // Test mode - fetch data directly from Epic's public FHIR endpoint
+    // Test mode - fetch REAL data from Epic's open FHIR endpoint
     async function runTestMode() {
-      statusEl.textContent = "Test Mode - Loading Epic Test Patients";
+      statusEl.textContent = "Fetching Epic test patients...";
       addBadge("TEST MODE","warn");
-      addBadge("No Auth Required","ok");
 
-      // Epic's public test FHIR endpoint
+      // Epic's open FHIR R4 endpoint (no auth required for test data)
       const baseUrl = "https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4";
 
-      // Epic's test patient IDs
-      const testPatients = [
-        { id: "Tbt3KuCY0B5PSrJvCu2j-PlK.aiHsu2xUjUM8bWpetXoB", name: "Nancy Smart" },
-        { id: "eq081-VQEgP8drUUqCWzHfw3", name: "Derrick Lin" },
-        { id: "erXuFYUfucBZaryVksYEcMg3", name: "Camila Lopez" }
+      // Known Epic test patient IDs
+      const testPatientIds = [
+        "Tbt3KuCY0B5PSrJvCu2j-PlK.aiHsu2xUjUM8bWpetXoB", // Nancy Smart
+        "eq081-VQEgP8drUUqCWzHfw3", // Derrick Lin
+        "erXuFYUfucBZaryVksYEcMg3" // Camila Lopez
       ];
 
-      try {
-        // Fetch all test patients
-        const promises = testPatients.map(async (tp) => {
-          try {
-            const response = await fetch(`${baseUrl}/Patient/${tp.id}`);
-            return await response.json();
-          } catch(e) {
-            console.error(`Failed to fetch ${tp.name}:`, e);
-            return null;
+      const patients = [];
+
+      for (const patientId of testPatientIds) {
+        try {
+          const response = await fetch(`${baseUrl}/Patient/${patientId}`, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/fhir+json'
+            }
+          });
+
+          if (response.ok) {
+            const patient = await response.json();
+            patients.push(patient);
+            console.log('Fetched patient:', patient);
+          } else {
+            console.error(`Failed to fetch patient ${patientId}:`, response.status);
           }
-        });
-
-        const patients = await Promise.all(promises);
-        const validPatients = patients.filter(p => p && !p.issue);
-
-        if (validPatients.length === 0) {
-          addBadge("No patients loaded","err");
-          statusEl.textContent = "Failed to load test patients";
-
-          const c = card("Error","❌","span-12");
-          c.appendChild(kv([
-            ["Status", "Could not access Epic's public FHIR endpoint"],
-            ["Endpoint", `<span class="mono">${baseUrl}</span>`],
-            ["Note", "Epic's open endpoint may have CORS restrictions. Try registering your app in Epic sandbox."]
-          ]));
-          return;
+        } catch(e) {
+          console.error(`Error fetching patient ${patientId}:`, e);
         }
-
-        // Display all patients in a grid
-        validPatients.forEach((patient, idx) => {
-          const name = `${(patient.name?.[0]?.given||[]).join(" ")} ${patient.name?.[0]?.family||""}`.trim();
-          const c = card(`Test Patient ${idx + 1}`, "👤", "span-4");
-          c.appendChild(kv([
-            ["Name", name || "—"],
-            ["ID", `<span class="mono" style="font-size:0.75rem">${patient.id}</span>`],
-            ["DOB", patient.birthDate || "—"],
-            ["Gender", patient.gender || "—"],
-            ["Phone", patient.telecom?.find(t=>t.system==="phone")?.value || "—"],
-            ["Address", patient.address?.[0]?.city ? `${patient.address[0].city}, ${patient.address[0].state}` : "—"]
-          ]));
-        });
-
-        statusEl.textContent = `Test Mode - Showing ${validPatients.length} Epic test patients`;
-      } catch(e) {
-        addBadge("Test mode failed","err");
-        statusEl.textContent = "Error: " + e.message;
-        console.error("Test mode error:", e);
       }
+
+      if (patients.length === 0) {
+        addBadge("CORS Error","err");
+        statusEl.textContent = "Cannot access Epic endpoint from browser";
+
+        const errorCard = card("⚠️ CORS Restriction", "🚫", "span-12");
+        errorCard.appendChild(kv([
+          ["Issue", "Epic's FHIR endpoint blocks direct browser access (CORS policy)"],
+          ["Solution", "Your app must be launched FROM Epic's environment to access test data"],
+          ["What to do", "1. Complete app registration at fhir.epic.com<br>2. Use Epic's 'Test Your App' launch page<br>3. Epic will launch your app with proper auth tokens"],
+          ["Endpoint", `<span class="mono">${baseUrl}</span>`]
+        ]));
+        return;
+      }
+
+      addBadge(`Loaded ${patients.length} patients`,"ok");
+
+      // Display all patients
+      patients.forEach((patient, idx) => {
+        const name = `${(patient.name?.[0]?.given||[]).join(" ")} ${patient.name?.[0]?.family||""}`.trim();
+        const c = card(`Test Patient ${idx + 1}`, "👤", "span-4");
+        c.appendChild(kv([
+          ["Name", name || "—"],
+          ["ID", `<span class="mono" style="font-size:0.75rem">${patient.id}</span>`],
+          ["DOB", patient.birthDate || "—"],
+          ["Gender", patient.gender || "—"],
+          ["Phone", patient.telecom?.find(t=>t.system==="phone")?.value || "—"],
+          ["Address", patient.address?.[0]?.city ? `${patient.address[0].city}, ${patient.address[0].state}` : "—"]
+        ]));
+      });
+
+      statusEl.textContent = `Test Mode - Loaded ${patients.length} Epic test patients`;
     }
     const card = (title, icon, span="span-4")=>{
       const c=document.createElement("div"); c.className=`card ${span}`;
