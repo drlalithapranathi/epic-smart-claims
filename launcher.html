@@ -1,13 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>SMART on FHIR Launcher</title>
+  <meta charset="utf-8" />
+  <title>Launching Smart Claims - Epic</title>
+  <script src="https://cdn.jsdelivr.net/npm/fhirclient/build/fhir-client.min.js"></script>
 </head>
 <body>
-  <h1>SMART on FHIR Launcher</h1>
-  <p>This page will initiate the Epic SMART on FHIR launch.</p>
-  <p>Placeholder – logic coming soon.</p>
+  <h1>Launching Smart Claims (Epic)...</h1>
+  <div id="status">Preparing SMART launch...</div>
+  <script>
+    const p = new URLSearchParams(location.search);
+    const iss = p.get("iss");
+    const launch = p.get("launch");
+
+    if (!iss || !launch) {
+      document.getElementById("status").textContent =
+        "Missing 'iss' or 'launch'. Launch this app from the EHR.";
+    } else {
+      document.getElementById("status").textContent = "Redirecting to Epic authorize...";
+
+      FHIR.oauth2.authorize({
+        clientId: "2b4759e7-6f7f-49e6-b1ab-c38d02f83bc7",
+        redirectUri: "https://drlalithapranathi.github.io/epic-smart-claims/index.html",
+        iss,
+        launch,
+        completeInTarget: true,
+        scope: "patient.search demographics r4"
+      });
+    }
+  </script>
 </body>
 </html>
-
