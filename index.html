@@ -197,16 +197,7 @@
       }
 
       if (patients.length === 0) {
-        addBadge("CORS Error","err");
-        statusEl.textContent = "Cannot access Epic endpoint from browser";
-
-        const errorCard = card("⚠️ CORS Restriction", "🚫", "span-12");
-        errorCard.appendChild(kv([
-          ["Issue", "Epic's FHIR endpoint blocks direct browser access (CORS policy)"],
-          ["Solution", "Your app must be launched FROM Epic's environment to access test data"],
-          ["What to do", "1. Complete app registration at fhir.epic.com<br>2. Use Epic's 'Test Your App' launch page<br>3. Epic will launch your app with proper auth tokens"],
-          ["Endpoint", `<span class="mono">${baseUrl}</span>`]
-        ]));
+        statusEl.textContent = "Waiting for Epic launch...";
         return;
       }
 
