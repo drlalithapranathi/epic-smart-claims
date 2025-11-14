@@ -157,6 +157,35 @@
     const addBadge = (text, type="")=>{
       const b=document.createElement("span"); b.className=`badge ${type}`; b.textContent=text; badges.appendChild(b);
     };
+
+    // Test mode - fetch data directly from Epic's public FHIR endpoint
+    async function runTestMode() {
+      statusEl.textContent = "Test Mode (No Auth)";
+      addBadge("TEST MODE","warn");
+
+      // Epic's public test FHIR endpoint
+      const baseUrl = "https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4";
+      const patientId = "Tbt3KuCY0B5PSrJvCu2j-PlK.aiHsu2xUjUM8bWpetXoB"; // Nancy Smart test patient
+
+      try {
+        const response = await fetch(`${baseUrl}/Patient/${patientId}`);
+        const patient = await response.json();
+
+        const name = `${(patient.name?.[0]?.given||[]).join(" ")} ${patient.name?.[0]?.family||""}`.trim();
+        const c = card("Patient (Test Data)","👤","span-12");
+        c.appendChild(kv([
+          ["ID", `<span class="mono">Patient/${patient.id}</span>`],
+          ["Name", name || "—"],
+          ["DOB", patient.birthDate || "—"],
+          ["Gender", patient.gender || "—"],
+        ]));
+
+        statusEl.textContent = "Test Mode - Showing sample patient";
+      } catch(e) {
+        addBadge("Test mode failed","err");
+        statusEl.textContent = "Error: " + e.message;
+      }
+    }
     const card = (title, icon, span="span-4")=>{
       const c=document.createElement("div"); c.className=`card ${span}`;
       c.innerHTML=`<h3>${icon||""} ${title}</h3>`; grid.appendChild(c); return c;
@@ -205,7 +234,8 @@
       });
     }
     (async () => {
-      const client = await FHIR.oauth2.ready();
+      try {
+        const client = await FHIR.oauth2.ready();
 
       console.log("=== FULL CLIENT OBJECT ===");
       console.log(client);
@@ -498,6 +528,11 @@
           rows
         ));
       }catch{}
+      } catch(error) {
+        // SMART launch failed, run test mode
+        console.log("SMART launch failed, switching to test mode:", error);
+        await runTestMode();
+      }
     })();
   </script>
 </body>
